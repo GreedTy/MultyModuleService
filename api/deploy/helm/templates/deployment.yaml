@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-{{ .Values.Common.ServiceName }}
+  namespace: {{ .Values.Common.NameSpace }}
+spec:
+  replicas: {{ .Values.Deployment.Replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.Common.ServiceName }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.Common.ServiceName }}
+      annotations:
+        ad.datadoghq.com/tags: '{"env": "{{ .Values.deployEnv }}"}'
+        ad.datadoghq.com/{{ .Values.appName }}.logs: >-
+          [{
+            "service": "{{ .Values.appName }}" ,
+            "log_processing_rules": [{
+              "type": "multi_line",
+              "name": "new_log_start_with_date",
+              "pattern": "\\d{4}-(0?[1-9]|1[012])-(0?[1-9]|[12][0-9]|3[01])"
+            }]
+          }]
+    spec:
+      nodeSelector:
+        key: worker-fo
+      volumes:
+        - hostPath:
+            path: /var/run/datadog/
+          name: apmsocketpath
+      containers:
+        - name: {{ .Values.Common.ServiceName }}
+          image: {{ .Values.imageName }}
+          volumeMounts:
+            - name: apmsocketpath
+              mountPath: /var/run/datadog
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+          envFrom:
+            - configMapRef: # load configmap as environment variables
+                name: configmap-{{ .Values.Common.ServiceName }}
+            - secretRef: # load secret as environment variables
+                name: secret-{{ .Values.Common.ServiceName }}
+          env:
+            - name: DD_HOSTNAME
+              value: trace-agent
+            - name: JVM_OPTS
+              value: "{{ .Values.app.jvmOpts }}"
+            # Datadog APM Configurations
+            - name: DD_ENV
+              value: {{ .Values.deployEnv }}
+            - name: DD_SERVICE
+              value: {{ .Values.Common.ServiceName }}
+            - name: DD_SERVICE_MAPPING
+              value: >-
+                java-aws-sdk:{{ .Values.ddService }}
+            - name: DD_VERSION
+              value: {{ .Values.deployVersion }}
+            - name: DD_PROFILING_ENABLED
+              value: "true"
+            - name: DD_LOGS_INJECTION
+              value: "true"
+            - name: DD_APPSEC_ENABLED
+              value: "true"
+            - name: DD_TRACE_SAMPLE_RATE
+              value: "1"

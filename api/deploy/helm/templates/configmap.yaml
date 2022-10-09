@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-{{ .Values.Common.ServiceName }}
+  namespace: {{ .Values.Common.NameSpace }}
+data:
+  SPRING_PROFILES_ACTIVE: {{ .Values.Configmap.SpringProfilesActive }}
+  OAUTH_AUTHORIZATION_SERVER_URI: {{ .Values.Configmap.OauthAuthorizationServerUri }}
+# Datadog APM Configurations
+#  DD_ENV: {{ .Values.deployEnv }}
+#  DD_SERVICE: {{ .Values.ddService }}
+#  DD_VERSION: {{ .Values.deployVersion }}
+#  DD_PROFILING_ENABLED: "true"
+#  DD_LOGS_INJECTION: "true"
+#  DD_APPSEC_ENABLED: "true"
+#  DD_TRACE_SAMPLE_RATE: "1"

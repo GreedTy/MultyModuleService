@@ -1,0 +1,32 @@
+service:
+  main:
+    datasource:
+      driverClassName: com.mysql.cj.jdbc.Driver
+      jdbcUrl: >-
+        jdbc:mysql://${MICROSERVICE_DB}?useUnicode=true&characterEncoding=utf-8&rewriteBatchedStatements=true
+        &serverTimezone=UTC&zeroDateTimeBehavior=convertToNull
+      username: ${MICROSERVICE_DATABASE_USERNAME}
+      password: ${MICROSERVICE_DATABASE_PASSWORD}
+      maximumPoolSize: 9
+      maxLifetime: 55000
+      poolName: service-main-pool
+      dataSourceProperties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 50
+        prepStmtCacheSqlLimit: 2048
+
+  replica:
+    datasource:
+      driverClassName: com.mysql.cj.jdbc.Driver
+      jdbcUrl: >-
+        jdbc:mysql://${MICROSERVICE_DB_RO}?useUnicode=true&characterEncoding=utf-8
+        &serverTimezone=UTC&zeroDateTimeBehavior=convertToNull
+      username: ${MICROSERVICE_DATABASE_USERNAME}
+      password: ${MICROSERVICE_DATABASE_PASSWORD}
+      maximumPoolSize: 9
+      maxLifetime: 55000
+      poolName: service-main-pool
+      dataSourceProperties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 50
+        prepStmtCacheSqlLimit: 2048

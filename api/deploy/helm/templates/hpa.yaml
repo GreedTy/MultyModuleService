@@ -1,0 +1,42 @@
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-service
+  namespace: service
+  labels:
+    app: service
+spec:
+  behavior:
+    scaleDown:
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60 # 스케일링 반복 길이 60초
+      selectPolicy: Min # 스케일링 정책 - Max or Min
+      stabilizationWindowSeconds: 300 # 스케일링 체크주기 - 300초
+    scaleUp:
+      policies:
+        - type: Pods
+          value: 3
+          periodSeconds: 70
+        - type: Percent
+          value: 12
+          periodSeconds: 80
+      selectPolicy: Max
+      stabilizationWindowSeconds: 0
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  maxReplicas: 3
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: deployment-service
+
+# https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#crossversionobjectreference-v1-autoscaling
+# https://access.redhat.com/documentation/ko-kr/openshift_container_platform/4.6/html/nodes/nodes-pods-autoscaling
