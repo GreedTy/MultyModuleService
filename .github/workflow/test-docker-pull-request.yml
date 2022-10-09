@@ -1,0 +1,147 @@
+name: Test with Docker
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  test-with-docker:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set timezone
+        run: export TZ="UTC"
+
+      - name: Config git user
+        run: |
+          git config --global user.email "dummy"
+          git config --global user.name "dummy"
+
+      - uses: actions/checkout@v2
+        with:
+          path: self
+          fetch-depth: 0
+
+      - name: Run MySQL container
+        run: |
+          docker-compose up --build -d && sleep 30
+        working-directory: 'self/docker/mysql'
+        
+      - name: Run LocalStack container
+        run: |
+          docker-compose up --build -d
+        working-directory: 'self/docker/localstack'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+        working-directory: self
+
+      - name: Run Gradle Test
+        env:
+          # github credentials to access package in other repository
+          ACTION_ACTOR: ${{ secrets.GITHUB_ACTOR }}
+          ACTION_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          ./gradlew ktlintCheck
+          ./gradlew api:test
+          ./gradlew batch:test
+          ./gradlew core:test
+          ./gradlew dao:test
+          ./gradlew domain:test
+          ./gradlew test:test
+        working-directory: self
+
+      - name: Upload JaCoCo coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: jacoco-report
+          path: self/**/build/jacoco/report/test/jacocoTestReport.csv
+
+  upload-coverage-badge:
+    needs: test-with-docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: self
+          fetch-depth: 0
+
+      - name: Download JaCoCo coverage report
+        uses: actions/download-artifact@v3
+        with:
+          name: jacoco-report
+          path: self
+
+      - name: Generate JaCoCo Badge for api
+        uses: cicirello/jacoco-badge-generator@v2
+        id: jacoco-api
+        with:
+          jacoco-csv-file: self/api/build/jacoco/report/test/jacocoTestReport.csv
+          badges-directory: self/.github/badges
+          generate-coverage-badge: true
+          generate-branches-badge: true
+          coverage-badge-filename: api-jacoco-coverage.svg
+          branches-badge-filename: api-jacoco-branches.svg
+          colors: '#4c1 #97ca00 #a4a61d #dfb317 #fe7d37 #e05d44'
+          intervals: 100 90 80 70 60 0
+          on-missing-report: fail
+          fail-if-coverage-less-than: 0
+          fail-if-branches-less-than: 0
+          fail-on-coverage-decrease: false
+          fail-on-branches-decrease: false
+
+      - name: Generate JaCoCo Badge for dao
+        uses: cicirello/jacoco-badge-generator@v2
+        id: jacoco-dao
+        with:
+          jacoco-csv-file: self/dao/build/jacoco/report/test/jacocoTestReport.csv
+          badges-directory: self/.github/badges
+          generate-coverage-badge: true
+          generate-branches-badge: true
+          coverage-badge-filename: dao-jacoco-coverage.svg
+          branches-badge-filename: dao-jacoco-branches.svg
+          colors: '#4c1 #97ca00 #a4a61d #dfb317 #fe7d37 #e05d44'
+          intervals: 100 90 80 70 60 0
+          on-missing-report: fail
+          fail-if-coverage-less-than: 0
+          fail-if-branches-less-than: 0
+          fail-on-coverage-decrease: false
+          fail-on-branches-decrease: false
+
+      - name: Generate JaCoCo Badge for domain
+        uses: cicirello/jacoco-badge-generator@v2
+        id: jacoco-domain
+        with:
+          jacoco-csv-file: self/domain/build/jacoco/report/test/jacocoTestReport.csv
+          badges-directory: self/.github/badges
+          generate-coverage-badge: true
+          generate-branches-badge: true
+          coverage-badge-filename: domain-jacoco-coverage.svg
+          branches-badge-filename: domain-jacoco-branches.svg
+          colors: '#4c1 #97ca00 #a4a61d #dfb317 #fe7d37 #e05d44'
+          intervals: 100 90 80 70 60 0
+          on-missing-report: fail
+          fail-if-coverage-less-than: 0
+          fail-if-branches-less-than: 0
+          fail-on-coverage-decrease: false
+          fail-on-branches-decrease: false
+
+      - name: Add new badge
+        uses: EndBug/add-and-commit@v7
+        with:
+          default_author: github_actions
+          message: 'upload badge'
+          add: '*.svg'
+          cwd: 'self'
